@@ -32,6 +32,7 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 			// フィルタリング＆ソート設定
 			SortingSettings sortingSettings = new SortingSettings( camera ) { criteria = SortingCriteria.CommonOpaque };
 			var	settings = new DrawingSettings( new ShaderTagId( "lbDeferred" ), sortingSettings );		// LightMode = lbDeferredのところを描く
+			settings.perObjectData = PerObjectData.ReflectionProbes;
 			var	filterSettings = new FilteringSettings(
 									new RenderQueueRange( 0, (int)RenderQueue.GeometryLast ),			// Queue = 0～3000まで
 									camera.cullingMask
@@ -39,6 +40,9 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 
 			// 描画処理
 			context.DrawRenderers( cullResults, ref settings, ref filterSettings );
+
+			// Skybox描画
+			if ( camera.clearFlags == CameraClearFlags.Skybox ) context.DrawSkybox( camera );
 
 			// Gizmo描画
 			context.DrawGizmos( camera, GizmoSubset.PreImageEffects );
