@@ -39,6 +39,11 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 
 			// 描画処理
 			context.DrawRenderers( cullResults, ref settings, ref filterSettings );
+
+			// Gizmo描画
+			context.DrawGizmos( camera, GizmoSubset.PreImageEffects );
+			// Gizmo描画
+			context.DrawGizmos( camera, GizmoSubset.PostImageEffects );
 		}
 
 		// コンテキストのサブミット
