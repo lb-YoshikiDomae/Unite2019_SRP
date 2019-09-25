@@ -1,4 +1,6 @@
-ï»¿Shader "Unlit/NewUnlitShader"
+// Unity built-in shader source. Copyright (c) 2016 Unity Technologies. MIT license (see license.txt)
+
+Shader "SRP/Particle"
 {
     Properties
     {
@@ -6,12 +8,15 @@
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         LOD 100
 
         Pass
         {
-            Tags { "LightMode"="lbDeferred"}
+            Tags { "LightMode"="lbParticle"}
+            Blend SrcAlpha OneMinusSrcAlpha, One OneMinusSrcAlpha		// ƒuƒŒƒ“ƒhƒoƒbƒtƒ@‚Ö‚Ì‘‚«‚İ‚È‚Ì‚ÅƒAƒ‹ƒtƒ@‚Ìİ’è‚àl—¶
+            ZWrite Off
+//          ZTest Always
 
             CGPROGRAM
             #pragma vertex vert
@@ -38,7 +43,6 @@
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-//          UNITY_DECLARE_TEXCUBE(unity_SpecCube0);
 
             v2f vert (appdata v)
             {
@@ -54,7 +58,6 @@
             {
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
-                col.rgb = lerp( col.rgb, UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0,i.normal,0).rgb, 0.5f );
                 // apply fog
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
