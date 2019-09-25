@@ -14,7 +14,7 @@ Shader "SRP/Particle"
         Pass
         {
             Tags { "LightMode"="lbParticle"}
-            Blend SrcAlpha OneMinusSrcAlpha, One OneMinusSrcAlpha		// ブレンドバッファへの書き込みなのでアルファの設定も考慮
+            Blend SrcAlpha OneMinusSrcAlpha, Zero OneMinusSrcAlpha		// ブレンドバッファへの書き込みなのでアルファの設定も考慮
             ZWrite Off
 //          ZTest Always
 
