@@ -38,6 +38,9 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 				cullResults = new CullingResults();
 				ScriptableCullingParameters	cullingParameters;
 				if ( !camera.TryGetCullingParameters( false, out cullingParameters ) ) continue;
+
+				cullingParameters.shadowDistance = Mathf.Min( 10.0f, camera.farClipPlane );		// シャドウの為の仮措置
+
 				cullResults = context.Cull( ref cullingParameters );
 			}
 
@@ -47,6 +50,13 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 			// camera.TargetTextureには直接書き込まず、これらのRenderTextureに書いてから最終的にコピーするだけです
 			//
 			CreateRenderTexture( context, camera, cb );
+
+			//
+			// <comment>
+			// シャドウマップのセットアップを行います
+			// 講演でもお話しした投影テクスチャシャドウを行うため、R8バッファで作成しています
+			//
+			SetupShadowMap( context, camera, cb );
 
 			//
 			// <comment>

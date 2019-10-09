@@ -16,6 +16,7 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 		ModelDepth,		// モデル描画用(デプス)
 		BlendColor,		// ブレンドバッファ(カラー)
 		BlendDepth,		// ブレンドバッファ(デプス)
+		ShadowMap,		// シャドウマップ
 
 		Num,
 	};
@@ -65,6 +66,7 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 		cb.GetTemporaryRT( (int)RenderTextureKind.ModelDepth, rt_model_width, rt_model_height, 24, FilterMode.Point,    RenderTextureFormat.Depth   );
 		cb.GetTemporaryRT( (int)RenderTextureKind.BlendColor, rt_blend_width, rt_blend_height,  0, FilterMode.Bilinear, RenderTextureFormat.Default );
 		cb.GetTemporaryRT( (int)RenderTextureKind.BlendDepth, rt_blend_width, rt_blend_height, 24, FilterMode.Point,    RenderTextureFormat.Depth   );
+		cb.GetTemporaryRT( (int)RenderTextureKind.ShadowMap,  1024,           1024,             0, FilterMode.Bilinear, RenderTextureFormat.R8      );		// シャドウマップは固定サイズで
 
 		// ここまでのコマンドバッファ実行
 		context.ExecuteCommandBuffer( cb );
@@ -73,6 +75,98 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 		for (int h = 0;h < (int)RenderTextureKind.Num;++h) {
 			RTI[h] = new RenderTargetIdentifier( h );
 		}
+	}
+
+	// シャドウマップのセットアップ
+	private void SetupShadowMap( ScriptableRenderContext context, Camera camera, CommandBuffer cb )
+	{
+		// コマンドバッファ利用の準備
+		cb.Clear();
+
+		//
+		// <comment>
+		// ライト情報を取得しています
+		// 今回は最初に見つかった平行光源をシャドウライトとして利用します
+		//
+		int	lightIndex = -1;
+		for (int h = 0;h < cullResults.visibleLights.Length;++h) {
+			// 今回のライトを取得
+			VisibleLight	currLight = cullResults.visibleLights[h];
+			Light			light     = currLight.light;
+			if ( light == null ) continue;
+
+			// シャドウを落とす？
+			if ( light.shadows == LightShadows.None ) continue;
+			if ( light.shadowStrength <= 0.0f ) continue;
+
+			// 今回は平行光源のみ
+			if ( light.type != LightType.Directional ) continue;
+
+			// バウンド判定
+			Bounds	bounds;
+			if ( !cullResults.GetShadowCasterBounds( h, out bounds ) ) continue;
+
+			// 使用ライトの決定
+			lightIndex = h;
+			break;
+		}
+
+		// もしシャドウが無さそうな時はダミーテクスチャを設定して終わり
+		if ( lightIndex < 0 ) {
+			cb.SetGlobalTexture( "_ShadowMap", Texture2D.whiteTexture );
+			context.ExecuteCommandBuffer( cb );
+			return;
+		}
+
+		// 各種パラメータの算出と設定
+		ShadowSplitData	shadowSplitData;
+		{
+			// パラメータ算出
+			Matrix4x4		viewMatrix;	
+			Matrix4x4		projMatrix;	
+			cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
+				lightIndex,									// int activeLightIndex,
+				0,											// int splitIndex,
+				1,											// int splitCount,
+				new Vector3(1.0f, 0.0f, 0.0f),				// Vector3 splitRatio,
+				1024,										// int shadowResolution,
+				QualitySettings.shadowNearPlaneOffset,		// float shadowNearPlaneOffset,
+				out viewMatrix,								// out Matrix4x4 viewMatrix,
+				out projMatrix,								// out Matrix4x4 projMatrix,
+				out shadowSplitData							// out Experimental.Rendering.ShadowSplitData shadowSplitData
+			);
+
+			// マトリクスを作ってグローバル化
+			Matrix4x4	matView        = viewMatrix;
+			Matrix4x4	matProj        = projMatrix;
+			Matrix4x4	matProj_shader = GL.GetGPUProjectionMatrix( matProj, true );
+			Matrix4x4	matVP          = matProj_shader * matView;
+			cb.SetGlobalMatrix( "_ShadowLightView", matView );
+			cb.SetGlobalMatrix( "_ShadowLightProj", matProj_shader );
+			cb.SetGlobalMatrix( "_ShadowLightVP", matVP );
+
+			// シャドウマップのグローバル化
+			cb.SetGlobalTexture( "_ShadowMap", RTI[(int)RenderTextureKind.ShadowMap] );
+		}
+
+		// RenderTarget設定(R8フォーマットのシャドウマップ)
+		cb.SetRenderTarget( RTI[(int)RenderTextureKind.ShadowMap] );
+
+		// RenderTextureをクリア
+		cb.ClearRenderTarget( true, true, Color.white, 1.0f );
+
+		// ここまでのコマンドバッファ実行
+		context.ExecuteCommandBuffer( cb );
+
+#if	false
+		// パラメータ送信
+		shadowLightDatas[h].UpdateShaderParameter( cb, shadowMapResolution );
+#endif
+
+		// 描画
+		var	settings = new ShadowDrawingSettings( cullResults, lightIndex );
+		settings.splitData = shadowSplitData;
+		context.DrawShadows( ref settings );
 	}
 
 	// モデル用レンダーテクスチャクリア
