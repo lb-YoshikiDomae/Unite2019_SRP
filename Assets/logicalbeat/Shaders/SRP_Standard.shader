@@ -31,6 +31,7 @@
             // make fog work
             #pragma multi_compile_fog
             #pragma multi_compile _ SHADOW_RECEIVE
+            #pragma multi_compile _ ENABLE_DIRECTIONAL_LIGHT
 
             #include "UnityCG.cginc"
 
@@ -55,6 +56,10 @@
             sampler2D _ShadowMap;
             float4x4  _ShadowLightVP;
 //          UNITY_DECLARE_TEXCUBE(unity_SpecCube0);
+#if ENABLE_DIRECTIONAL_LIGHT
+            float4    _LightColor;
+            float4    _LightVector;
+#endif
 
             v2f vert (appdata v)
             {
@@ -79,14 +84,18 @@
                 //
                 col.rgb = lerp( col.rgb, UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0,i.normal,0).rgb, 0.5f );
 
-#if	SHADOW_RECEIVE
+#if ENABLE_DIRECTIONAL_LIGHT
+                // 超簡易的なライティング処理
+                col.rgb *= ( dot( i.normal.xyz, _LightVector.xyz ) * _LightColor.rgb );
+#endif
+
+#if SHADOW_RECEIVE
                 // 投影テクスチャシャドウを適応
                 float4	shadowProj = mul( _ShadowLightVP, i.wpos );
                 shadowProj = UNITY_PROJ_COORD(ComputeScreenPos(shadowProj));
                 float3	coord = shadowProj.xyz / shadowProj.www;
                 col.rgb *= lerp( 0.5f, 1.0f, tex2D( _ShadowMap, coord.xy ).r );		// 少し薄くする
 #endif
-
                 // apply fog
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;

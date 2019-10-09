@@ -160,6 +160,59 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 		context.DrawShadows( ref settings );
 	}
 
+	// ライトのセットアップ
+	private void SetupLights( ScriptableRenderContext context, Camera camera, CommandBuffer cb )
+	{
+		// コマンドバッファ利用の準備
+		cb.Clear();
+
+		//
+		// <comment>
+		// ライト情報を取得しています
+		// 今回は最初に見つかった平行光源を利用しています
+		//
+		int	lightIndex = -1;
+		for (int h = 0;h < cullResults.visibleLights.Length;++h) {
+			// 今回のライトを取得
+			VisibleLight	currLight = cullResults.visibleLights[h];
+			Light			light     = currLight.light;
+			if ( light == null ) continue;
+
+			// シャドウを落とす？
+			if ( light.shadows == LightShadows.None ) continue;
+			if ( light.shadowStrength <= 0.0f ) continue;
+
+			// 今回は平行光源のみ
+			if ( light.type != LightType.Directional ) continue;
+
+			// 使用ライトの決定
+			lightIndex = h;
+			break;
+		}
+
+		// もしライトが無さそうな時はキーワードを外して終わり
+		if ( lightIndex < 0 ) {
+			cb.DisableShaderKeyword( "ENABLE_DIRECTIONAL_LIGHT" );
+			context.ExecuteCommandBuffer( cb );
+			return;
+		}
+
+		// ライトのパラメータを設定
+		{
+			// 対象ライトを取得
+			VisibleLight	currLight = cullResults.visibleLights[lightIndex];
+			Light			light     = currLight.light;
+
+			// パラメータを設定して送信
+			cb.EnableShaderKeyword( "ENABLE_DIRECTIONAL_LIGHT" );
+			cb.SetGlobalColor( "_LightColor", light.color * light.intensity );
+			cb.SetGlobalVector( "_LightVector", -light.transform.forward );		// 光源の逆方向
+			context.ExecuteCommandBuffer( cb );
+		}
+
+
+	}
+
 	// モデル用レンダーテクスチャクリア
 	private void ClearModelRenderTexture( ScriptableRenderContext context, Camera camera, CommandBuffer cb )
 	{
