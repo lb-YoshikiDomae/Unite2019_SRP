@@ -149,19 +149,10 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 			cb.SetGlobalTexture( "_ShadowMap", RTI[(int)RenderTextureKind.ShadowMap] );
 		}
 
-		// RenderTarget設定(R8フォーマットのシャドウマップ)
+		// RenderTarget設定(R8フォーマットのシャドウマップ)してクリア処理
 		cb.SetRenderTarget( RTI[(int)RenderTextureKind.ShadowMap] );
-
-		// RenderTextureをクリア
 		cb.ClearRenderTarget( true, true, Color.white, 1.0f );
-
-		// ここまでのコマンドバッファ実行
 		context.ExecuteCommandBuffer( cb );
-
-#if	false
-		// パラメータ送信
-		shadowLightDatas[h].UpdateShaderParameter( cb, shadowMapResolution );
-#endif
 
 		// 描画
 		var	settings = new ShadowDrawingSettings( cullResults, lightIndex );
