@@ -38,6 +38,9 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 				cullResults = new CullingResults();
 				ScriptableCullingParameters	cullingParameters;
 				if ( !camera.TryGetCullingParameters( false, out cullingParameters ) ) continue;
+
+				cullingParameters.shadowDistance = Mathf.Min( 20.0f, camera.farClipPlane );		// シャドウの為の仮措置
+
 				cullResults = context.Cull( ref cullingParameters );
 			}
 
@@ -50,9 +53,23 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 
 			//
 			// <comment>
+			// シャドウマップのセットアップを行います
+			// 講演でもお話しした投影テクスチャシャドウを行うため、R8バッファで作成しています
+			//
+			SetupShadowMap( context, camera, cb );
+
+			//
+			// <comment>
 			// 講演内では省きましたが、カメラクリア処理をしないと絵が描けません
 			//
 			ClearModelRenderTexture( context, camera, cb );
+
+			//
+			// <comment>
+			// ライトのセットアップを行います
+			// 今回は適当な平行光源を1つのみで行います
+			//
+			SetupLights( context, camera, cb );
 
 			//
 			// <comment>

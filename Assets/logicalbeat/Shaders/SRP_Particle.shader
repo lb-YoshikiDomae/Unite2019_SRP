@@ -15,6 +15,11 @@ Shader "SRP/Particle"
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         LOD 100
 
+        //
+        // <comment>
+        // 通常描画部分です
+        // ビルトインシェーダのUnlitからの改造です
+        //
         Pass
         {
             Tags { "LightMode"="lbParticle"}		// LightModeがポイント！
@@ -68,5 +73,12 @@ Shader "SRP/Particle"
             }
             ENDCG
         }
+
+        //
+        // <comment>
+        // シャドウマップを作る用のシェーダです
+        // Standardのをそのまま利用しています
+        //
+        UsePass "SRP/Standard/SHADOWCASTER"
     }
 }
