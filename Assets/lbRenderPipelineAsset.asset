@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2878641b14c640b4da533b9ae961baff, type: 3}
+  m_Name: lbRenderPipelineAsset
+  m_EditorClassIdentifier: 
+  materialStandard: {fileID: 2100000, guid: 731b9ce9e0baf834dac5267895178c14, type: 2}
+  materialParticle: {fileID: 2100000, guid: f52a0c7e8c7a8af48a2c30f4b1c182ef, type: 2}
+  materialUI: {fileID: 2100000, guid: a227ab91590f2cf49a1917ca6b2fe04a, type: 2}
