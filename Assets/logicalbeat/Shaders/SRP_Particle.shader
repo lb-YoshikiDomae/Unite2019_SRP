@@ -1,5 +1,9 @@
 // Unity built-in shader source. Copyright (c) 2016 Unity Technologies. MIT license (see license.txt)
 
+//
+// <comment>
+// 本来のParticleシェーダではなく、Unlitからの改造でのシェーダとなります
+//
 Shader "SRP/Particle"
 {
     Properties
@@ -13,7 +17,7 @@ Shader "SRP/Particle"
 
         Pass
         {
-            Tags { "LightMode"="lbParticle"}
+            Tags { "LightMode"="lbParticle"}		// LightModeがポイント！
             Blend SrcAlpha OneMinusSrcAlpha, Zero OneMinusSrcAlpha		// ブレンドバッファへの書き込みなのでアルファの設定も考慮
             ZWrite Off
 //          ZTest Always

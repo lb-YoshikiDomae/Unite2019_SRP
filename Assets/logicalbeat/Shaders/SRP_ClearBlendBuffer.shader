@@ -1,6 +1,8 @@
+//
+// <comment>
 // デプスバッファコピー用シェーダ
 // （Internal-BlitCopyWithDepth.shaderからの改変）
-
+//
 Shader "Hidden/SRP/CopyDepth" {
     Properties
     {
