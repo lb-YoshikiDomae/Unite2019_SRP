@@ -15,11 +15,6 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 	// コンストラクタ
 	public lbRenderPipelineInstance( lbRenderPipelineAsset asset )
 	{
-	}
-
-	// 描画処理
-	protected override void Render( ScriptableRenderContext context, Camera[] cameras )
-	{
 		// 初期設定
 		if ( materialCopyDepth == null ) {
 			Shader	shader = Shader.Find( "Hidden/SRP/CopyDepth" );
@@ -29,7 +24,11 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 			Shader	shader = Shader.Find( "Hidden/SRP/MergeBlendBuffer" );
 			if ( shader != null ) materialMergeBlendBuffer = new Material( shader );
 		}
+	}
 
+	// 描画処理
+	protected override void Render( ScriptableRenderContext context, Camera[] cameras )
+	{
 		// カメラごとに処理
 		foreach ( var camera in cameras )
 		{

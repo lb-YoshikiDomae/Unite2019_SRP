@@ -78,6 +78,11 @@ public class lbRenderPipelineAsset : RenderPipelineAsset
 #endif
 
 #if	UNITY_EDITOR
+	//
+	// <comment>
+	// デフォルトマテリアル＆シェーダの設定
+	// 今回は最低限にしてあります＆用途不明のものもいくつかあります
+	//
 	public override Shader defaultShader
 	{
 		get
