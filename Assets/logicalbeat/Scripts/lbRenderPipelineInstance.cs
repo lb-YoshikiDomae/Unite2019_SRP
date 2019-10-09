@@ -145,10 +145,12 @@ public partial class lbRenderPipelineInstance : RenderPipeline
 				context.DrawRenderers( cullResults, ref settings, ref filterSettings );
 			}
 
+#if	UNITY_EDITOR
 			// Gizmo描画
 			context.DrawGizmos( camera, GizmoSubset.PreImageEffects );
 			// Gizmo描画
 			context.DrawGizmos( camera, GizmoSubset.PostImageEffects );
+#endif
 
 			// 各種終了処理
 			{
