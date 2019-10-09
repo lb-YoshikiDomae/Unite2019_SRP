@@ -9,170 +9,134 @@ using UnityEngine.Rendering;
 
 public partial class lbRenderPipelineInstance : RenderPipeline
 {
-	private Material	materialCopyDepth        = null;		// デプスバッファコピー用マテリアル
-	private Material	materialMergeBlendBuffer = null;		// ブレンドバッファ合成用マテリアル
-
-	// コンストラクタ
-	public lbRenderPipelineInstance( lbRenderPipelineAsset asset )
-	{
-		// 初期設定
-		if ( materialCopyDepth == null ) {
-			Shader	shader = Shader.Find( "Hidden/SRP/CopyDepth" );
-			if ( shader != null ) materialCopyDepth = new Material( shader );
-		}
-		if ( materialMergeBlendBuffer == null ) {
-			Shader	shader = Shader.Find( "Hidden/SRP/MergeBlendBuffer" );
-			if ( shader != null ) materialMergeBlendBuffer = new Material( shader );
-		}
-	}
-
-	// 描画処理
+	//
+	// <comment>
+	// 本ソースでは流れを分かりやすくするため、描画関数のみにしてあります
+	// 各処理はlbRenderPipelineInstance_sub.csを参照ください！
+	//
 	protected override void Render( ScriptableRenderContext context, Camera[] cameras )
 	{
 		// カメラごとに処理
 		foreach ( var camera in cameras )
 		{
-			// カメラプロパティ設定
-			context.SetupCameraProperties( camera );
-
-			// カリング処理
-			CullingResults				cullResults = new CullingResults();
-			ScriptableCullingParameters	cullingParameters;
-			if ( !camera.TryGetCullingParameters( false, out cullingParameters ) ) continue;
-			cullResults = context.Cull( ref cullingParameters );
-
 			// コマンドバッファを用意
 			CommandBuffer	cb = new CommandBuffer();
 
-			// RenderTextureを用意
-			int	rt_width     = (int)( (float)Screen.width  * 0.7f );
-			int	rt_height    = (int)( (float)Screen.height * 0.7f );
-			int	blend_width  = (int)( (float)rt_width      * 0.5f );
-			int	blend_height = (int)( (float)rt_height     * 0.5f );
-			int	rt_targetTexture = 0;
-			int	rt_depthTexture  = 1;
-			int	rt_blendTexture  = 2;
-			int	rt_blendDepth    = 3;
+			//
+			// <comment>
+			// カメラプロパティ設定です
+			// ここは定型文的な感じになるかと思います
+			//
+			context.SetupCameraProperties( camera );
 
-			// 各種準備
+			//
+			// <comment>
+			// カリング処理を行います
+			// ここは定型文的な感じになるかと思います
+			//
 			{
-				// コマンドバッファ利用の準備
-				cb.Clear();
-
-				{
-					cb.GetTemporaryRT( rt_targetTexture, rt_width,    rt_height,     0, FilterMode.Bilinear, RenderTextureFormat.Default );
-					cb.GetTemporaryRT( rt_depthTexture,  rt_width,    rt_height,    24, FilterMode.Point,    RenderTextureFormat.Depth   );
-					cb.GetTemporaryRT( rt_blendTexture,  blend_width, blend_height,  0, FilterMode.Bilinear, RenderTextureFormat.Default );
-					cb.GetTemporaryRT( rt_blendDepth,    blend_width, blend_height, 24, FilterMode.Point,    RenderTextureFormat.Depth   );
-				}
-
-				// 書き込み先を少し小さめのRenderTextureに変更
-				cb.SetRenderTarget( new RenderTargetIdentifier( rt_targetTexture ), new RenderTargetIdentifier( rt_depthTexture  ) );
-
-				// デプスバッファクリア
-//				cb.ClearRenderTarget( true, false, Color.black, 1.0f );
-				cb.ClearRenderTarget( true, true,  Color.black, 1.0f );		// 分かりやすくするためテスト的にカラーもクリア
-
-				// ここまでのコマンドバッファ実行
-				context.ExecuteCommandBuffer( cb );
+				cullResults = new CullingResults();
+				ScriptableCullingParameters	cullingParameters;
+				if ( !camera.TryGetCullingParameters( false, out cullingParameters ) ) continue;
+				cullResults = context.Cull( ref cullingParameters );
 			}
 
-			// 不透明描画
-			{
-				// フィルタリング＆ソート設定
-				SortingSettings sortingSettings = new SortingSettings( camera ) { criteria = SortingCriteria.CommonOpaque };
-				var	settings = new DrawingSettings( new ShaderTagId( "lbForward" ), sortingSettings );		// LightMode = lbForwardのところを描く
-				settings.perObjectData = PerObjectData.ReflectionProbes;
-				var	filterSettings = new FilteringSettings(
-										new RenderQueueRange( 0, (int)RenderQueue.GeometryLast ),			// Queue = 0～2500まで
-										camera.cullingMask
-									);
+			//
+			// <comment>
+			// 各種RenderTextureを用意します
+			// camera.TargetTextureには直接書き込まず、これらのRenderTextureに書いてから最終的にコピーするだけです
+			//
+			CreateRenderTexture( context, camera, cb );
 
-				// 描画処理
-				context.DrawRenderers( cullResults, ref settings, ref filterSettings );
+			//
+			// <comment>
+			// 講演内では省きましたが、カメラクリア処理をしないと絵が描けません
+			//
+			ClearModelRenderTexture( context, camera, cb );
+
+			//
+			// <comment>
+			// 不透明描画部分です
+			// 3Dモデル用RenderTextureに不透明部分だけ書き込みます
+			//
+			DrawOpaque( context, camera, cb );
+
+			//
+			// <comment>
+			// 最後の不透明であるSkyboxを書き込みます
+			//
+			if ( camera.clearFlags == CameraClearFlags.Skybox )
+			{
+				context.DrawSkybox( camera );
 			}
 
-			// Skybox描画
-			if ( camera.clearFlags == CameraClearFlags.Skybox ) context.DrawSkybox( camera );
+			//
+			// <comment>
+			// 今回のキモとなるブレンドバッファ描画
+			// 小さめのバッファを用意しそこにパーティクルを書きます
+			//
+			DrawBlendBuffer( context, camera, cb );
 
-			// ブレンドバッファ描画
-			{
-				// 書き込み先をブレンドバッファに
-				if ( ( materialMergeBlendBuffer != null ) && ( materialCopyDepth != null ) )
-				{
-					cb.Clear();
-					cb.Blit( new RenderTargetIdentifier( rt_depthTexture ), new RenderTargetIdentifier( rt_blendDepth ), materialCopyDepth );
-					cb.SetRenderTarget( new RenderTargetIdentifier( rt_blendTexture ), new RenderTargetIdentifier( rt_blendDepth  ) );
-					cb.ClearRenderTarget( false, true, Color.black, 1.0f );		// ブレンドバッファのカラー初期値は(0,0,0,1)
-					context.ExecuteCommandBuffer( cb );
-				}
+			//
+			// <comment>
+			// パーティクル以外の半透明の描画部分です
+			// 今回のシーンでは該当部分が無いので動作未確認です
+			//
+			DrawTransparent( context, camera, cb );
 
-				// フィルタリング＆ソート設定
-				SortingSettings sortingSettings = new SortingSettings( camera ) { criteria = SortingCriteria.CommonTransparent };
-				var	settings = new DrawingSettings( new ShaderTagId( "lbParticle" ), sortingSettings );		// LightMode = lbParticleのところを描く
-				settings.perObjectData = PerObjectData.ReflectionProbes;
-				var	filterSettings = new FilteringSettings(
-										new RenderQueueRange( (int)RenderQueue.GeometryLast, (int)RenderQueue.Transparent ),			// Queue = 2500～3000まで
-										camera.cullingMask
-									);
-
-				// 描画処理
-				context.DrawRenderers( cullResults, ref settings, ref filterSettings );
-
-				// 書き込み先を戻してブレンドバッファを合成
-				if ( ( materialMergeBlendBuffer != null ) && ( materialCopyDepth != null ) )
-				{
-					cb.Clear();
-					cb.SetRenderTarget( new RenderTargetIdentifier( rt_targetTexture ), new RenderTargetIdentifier( rt_depthTexture  ) );
-					cb.Blit( new RenderTargetIdentifier( rt_blendTexture ), new RenderTargetIdentifier( rt_targetTexture ), materialMergeBlendBuffer );
-					context.ExecuteCommandBuffer( cb );
-				}
-			}
-
-			// 半透明描画
-			{
-				// フィルタリング＆ソート設定
-				SortingSettings sortingSettings = new SortingSettings( camera ) { criteria = SortingCriteria.CommonTransparent };
-				var	settings = new DrawingSettings( new ShaderTagId( "lbForward" ), sortingSettings );		// LightMode = lbForwardのところを描く
-				settings.perObjectData = PerObjectData.ReflectionProbes;
-				var	filterSettings = new FilteringSettings(
-										new RenderQueueRange( (int)RenderQueue.GeometryLast, (int)RenderQueue.Transparent ),			// Queue = 2500～3000まで
-										camera.cullingMask
-									);
-
-				// 描画処理
-				context.DrawRenderers( cullResults, ref settings, ref filterSettings );
-			}
+			//
+			// <comment>
+			// ここで一通りの絵が書けたので、camera.targetTextureにフィードバックします
+			//
+			RestoreCameraTarget( context, cb );
 
 #if	UNITY_EDITOR
-			// Gizmo描画
-			context.DrawGizmos( camera, GizmoSubset.PreImageEffects );
-			// Gizmo描画
-			context.DrawGizmos( camera, GizmoSubset.PostImageEffects );
+			//
+			// <comment>
+			// Gizmo描画その1です
+			// イメージエフェクト前に描かないといけないものが該当するらしいです
+			// (調査あまり出来ていません)
+			//
+			if ( UnityEditor.Handles.ShouldRenderGizmos() )		// ←この判定をしないとGameビューでも描かれてしまう！
+			{
+				context.DrawGizmos( camera, GizmoSubset.PreImageEffects );
+			}
 #endif
 
-			// 各種終了処理
+			//
+			// <comment>
+			// ここにポストフィルタの処理が挟まることになると思います
+			//
+
+#if	UNITY_EDITOR
+			//
+			// <comment>
+			// Gizmo描画その1です
+			// イメージエフェクト後に描かないといけないものが該当するらしいです
+			// (調査あまり出来ていません)
+			//
+			if ( UnityEditor.Handles.ShouldRenderGizmos() )		// ←この判定をしないとGameビューでも描かれてしまう！
 			{
-				// コマンドバッファ利用の準備
-				cb.Clear();
-
-				// 書き込み先をカメラターゲットに戻してtargetTextureをコピー
-				{
-					cb.SetRenderTarget( new RenderTargetIdentifier( BuiltinRenderTextureType.CameraTarget ) );
-					cb.Blit( new RenderTargetIdentifier( rt_targetTexture ), new RenderTargetIdentifier( BuiltinRenderTextureType.CameraTarget ) );
-				}
-
-				// 使用したRenderTextureを破棄
-				{
-					cb.ReleaseTemporaryRT( rt_targetTexture );
-					cb.ReleaseTemporaryRT( rt_depthTexture  );
-					cb.ReleaseTemporaryRT( rt_blendTexture  );
-					cb.ReleaseTemporaryRT( rt_blendDepth    );
-				}
-
-				// コマンドバッファ実行
-				context.ExecuteCommandBuffer( cb );
+				context.DrawGizmos( camera, GizmoSubset.PostImageEffects );
 			}
+#endif
+
+			//
+			// <comment>
+			// UIを描画します
+			// 講演でお話しした通り、デフォルトUIシェーダも使えるようになっているはず
+			// (ただSceneビューではなぜか表示されず。。LWRPでは出るのに。。)
+			//
+			// あとCanvasが「Screen Space - Overlay」のものはここでは書かれません
+			// SRPで処理せず、全く別のところで描かれるようです
+			//
+			DrawUI( context, camera, cb );
+
+			//
+			// <comment>
+			// 利用したRenderTextureを破棄します
+			//
+			ReleaseRenderTexture( context, cb );
 		}
 
 		// コンテキストのサブミット
