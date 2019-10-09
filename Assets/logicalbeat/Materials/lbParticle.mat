@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: New Material
-  m_Shader: {fileID: 4800000, guid: 6cb0051dffe9b4144b9e23722365e890, type: 3}
+  m_Name: lbParticle
+  m_Shader: {fileID: 4800000, guid: d56f9f52efa9c9d49b436dfb544047fb, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
