@@ -34,7 +34,7 @@ https://learning.unity3d.jp/3284/
 （こちらも本プロジェクトでは既に設定済みです）
     - <img src="https://user-images.githubusercontent.com/22964712/66531822-20160f00-eb48-11e9-8e2d-7ace825d9691.png" width=50%>
 
-# ソース構成など
+## ソース構成など
 - 「Assets/logicalbeat」以下にSRP関連のスクリプト、シェーダなどが格納されています。
 - 「Assets/logicalbeat/Scripts」が関連スクリプトですが、それぞれ以下の役割になります。
 
@@ -57,6 +57,10 @@ https://learning.unity3d.jp/3284/
 SetupShadowMap( context, camera, cb );
 ```
 
+# 補足情報
+- Unityプロジェクトに対する補足情報を弊社ブログにまとめました。  
+併せて参照いただけますと幸いです。  
+https://logicalbeat.jp/blog/3971/
 
 # 免責事項
 本プロジェクトでの情報を利用することによる損害等に対し、株式会社ロジカルビートは一切の責任を負いません。
